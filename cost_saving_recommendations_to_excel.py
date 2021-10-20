@@ -209,8 +209,7 @@ if __name__ == "__main__":
     file_name_prefix = 'CostSavingRecommendations'
     xl = ExcelSheet(file_name_prefix)
     if args.run_sp:
-        #write_sp_to_excel(xl, profiles, terms=args.term_in_years.split(','), payment_options=args.payment_options.split(','))
-        pass
+        write_sp_to_excel(xl, profiles, terms=args.term_in_years.split(','), payment_options=args.payment_options.split(','))
     if args.run_ri:
         write_ri_to_excel(xl, profiles, terms=args.term_in_years.split(','), payment_options=args.payment_options.split(','))
     xl.close()
