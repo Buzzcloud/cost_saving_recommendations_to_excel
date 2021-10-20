@@ -61,20 +61,22 @@ def convert_to_number(number_string):
     else:
         return number_string
 
+def get_profiles(ignore_profiles):
+    """
+    Get all local profiles from AWS credentials 
+    """
+    profiles = boto3.session.Session().available_profiles
+    return [profile for profile in profiles if profile not in ignore_profiles]
 
-def write_sp_to_excel(xl, terms = ['ONE_YEAR', 'THREE_YEARS'], payment_options = ['NO_UPFRONT']):
+def write_sp_to_excel(xl, profiles, terms = ['ONE_YEAR', 'THREE_YEARS'], payment_options = ['NO_UPFRONT']):
     """
     Write the output from Savings Plans to Excel xlsx 
     Loop through profiles, payment options and terms in years
     """
-    profiles = boto3.session.Session().available_profiles
     worksheet_name = 'Savings Plans'
     xl.add_worksheet(worksheet_name)
-    ignore_profiles = ['default', 'Billing']
     for profile in profiles:
         print(f'Getting Savings plans for: {profile}')
-        if profile in ignore_profiles:
-            continue
         for po in payment_options:
             for term in terms:
                 sp_rec = get_savings_plans_recommendations(
@@ -95,11 +97,11 @@ def write_sp_to_excel(xl, terms = ['ONE_YEAR', 'THREE_YEARS'], payment_options =
 
                 xl.add_header_row(worksheet_name, headers)
                 xl.add_row(worksheet_name, values, formats)
-                index = [idx for idx, s in enumerate(headers) if 'Persent' in s][0]
+                index = [idx for idx, s in enumerate(headers) if 'Percent' in s][0]
                 xl.add_conditional_format_column(worksheet_name, index)
                 xl.add_autofilter(worksheet_name, len(values))
 
-def get_reservation_recommendations(profile, service, term='ONE_YEAR', payment_options="NO_UPFRONT", look_back_period='THIRTY_DAYS'):
+def get_reservation_recommendations(profile, service, term='ONE_YEAR', payment_options="NO_UPFRONT", look_back_period='SIXTY_DAYS'):
     """
     Fetch the Cost Explorer reservation recommendations
     """
@@ -129,12 +131,11 @@ def get_reservation_recommendations(profile, service, term='ONE_YEAR', payment_o
     else: 
         return None
 
-def write_ri_to_excel(xl, terms = ['ONE_YEAR', 'THREE_YEARS'], payment_options=['NO_UPFRONT']):
+def write_ri_to_excel(xl, profiles, terms = ['ONE_YEAR', 'THREE_YEARS'], payment_options=['NO_UPFRONT']):
     """
     Write the out put from AWS Cost Explorer Reserved Instances to xlsx 
     For all availabe profiles in aws config
     """
-    profiles = boto3.session.Session().available_profiles
     worksheet_name_prefix = 'RI'
     services = [
         'Amazon Elastic Compute Cloud - Compute', 'Amazon Relational Database Service', 
@@ -147,10 +148,7 @@ def write_ri_to_excel(xl, terms = ['ONE_YEAR', 'THREE_YEARS'], payment_options=[
     for service in services:
         xl.add_worksheet(f'{worksheet_name_prefix} - {services_short[service]}')
 
-    ignore_profiles = ['default', 'Billing']
     for profile in profiles:
-        if profile in ignore_profiles:
-            continue
         for service in services:
             # write data to the active worksheet
             worksheet_name = f'{worksheet_name_prefix} - {services_short[service]}'
@@ -162,22 +160,23 @@ def write_ri_to_excel(xl, terms = ['ONE_YEAR', 'THREE_YEARS'], payment_options=[
                         continue
                     prefix_headers = [camel_to_space(k) for k in ri_recommendations[0].keys()]
                     prefix_values = list(ri_recommendations[0].values())
-                    formats = [xl.PLAIN, xl.PLAIN, xl.NUMBER, xl.NUMBER, xl.PLAIN, # Prefix headers
-                            xl.NUMBER, xl.PLAIN, xl.PLAIN, xl.NUMBER, xl.NUMBER, xl.NUMBER, xl.NUMBER, xl.NUMBER, xl.CURRENCY, xl.CURRENCY,
-                            xl.CURRENCY, xl.NUMBER, xl.NUMBER, xl.PLAIN, xl.CURRENCY, xl.DECIMAL, xl.CURRENCY, xl.CURRENCY, xl.CURRENCY, xl.CURRENCY]
+                    formats = [xl.PLAIN, xl.PLAIN, xl.PLAIN, xl.PLAIN, xl.NUMBER, # Prefix headers
+                            xl.DECIMAL, xl.NUMBER, xl.NUMBER, xl.NUMBER, xl.NUMBER, 
+                            xl.DECIMAL, xl.DECIMAL, xl.DECIMAL, xl.DECIMAL, xl.PLAIN,
+                            xl.CURRENCY, xl.DECIMAL, xl.CURRENCY, xl.CURRENCY, xl.CURRENCY, xl.CURRENCY, xl.PLAIN, xl.PLAIN]
                     for ri in ri_recommendations[1]:
                         instance_details = ri.pop('InstanceDetails')
                         instance_details = list(instance_details.values())[0]
                         headers = [camel_to_space(k) for k in ri.keys()]
-                        values = list(ri.values())
+                        values = [convert_to_number(v) for v in ri.values()]
                         for id in ['InstanceType', 'Region']:
                             headers.append(id)
                             values.append(instance_details[id])
                         xl.add_header_row(worksheet_name, prefix_headers + headers)
                         xl.add_row(worksheet_name, prefix_values + values, formats)
-                        index = [idx for idx, s in enumerate(headers) if 'Persent' in s][0]
+                        index = [idx for idx, s in enumerate(headers) if 'Percent' in s][0] + len(prefix_values)
                         xl.add_conditional_format_column(worksheet_name, index)
-                        xl.add_autofilter(worksheet_name, len(values))
+                        xl.add_autofilter(worksheet_name, len(prefix_headers)+ len(values))
                         
 
 if __name__ == "__main__":
@@ -205,10 +204,13 @@ if __name__ == "__main__":
                         dest='run_ri')
     args = parser.parse_args()
 
+    ignore_profiles = ['default', 'Billing', 'CostReportAdmin']
+    profiles = get_profiles(ignore_profiles)
     file_name_prefix = 'CostSavingRecommendations'
     xl = ExcelSheet(file_name_prefix)
     if args.run_sp:
-        write_sp_to_excel(xl, terms=args.term_in_years.split(','), payment_options=args.payment_options.split(','))
+        #write_sp_to_excel(xl, profiles, terms=args.term_in_years.split(','), payment_options=args.payment_options.split(','))
+        pass
     if args.run_ri:
-        write_ri_to_excel(xl, terms=args.term_in_years.split(','), payment_options=args.payment_options.split(','))
+        write_ri_to_excel(xl, profiles, terms=args.term_in_years.split(','), payment_options=args.payment_options.split(','))
     xl.close()
