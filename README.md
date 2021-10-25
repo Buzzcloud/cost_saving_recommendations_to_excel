@@ -5,6 +5,8 @@ Managers that take decisions around Reserved Instances and Savings Plans purchas
 Store your Cost Savings Recommendations from AWS CostExplorer API into an Excel file using [XlsxWriter](https://xlsxwriter.readthedocs.io/index.html).
 [Savings Plans](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ce.html#CostExplorer.Client.get_savings_plans_purchase_recommendation) and [Reserved Instances](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ce.html#CostExplorer.Client.get_reservation_purchase_recommendation) recommendations are parsed and added to worksheets.
 
+Example screenshot taken on a Mac with Account Alias and Account Id anonymized.
+![Screenshot of Excel sheet with Savings Plans and Reserved Instances recommendations](img/sp-ri-excel-screenshot.png)
 
 ## Prerequisites
 
